@@ -3,6 +3,25 @@
 x-ziti-sha: &ziti-sha "d9a20d9dad8c58f098f989eb1668ed657c0500c5"
 
 services:
+  init-pki:
+    build:
+      context: ./docker/ziti
+      dockerfile: Dockerfile
+      target: ziti-controller
+      args:
+        ZITI_SHA: *ziti-sha
+    image: openziti-controller-from-harness:local
+    container_name: init-pki
+    extra_hosts:
+      - "ziti-controller:127.0.0.1"
+      - "ziti-router:127.0.0.1"
+    entrypoint: ["bash", "/scripts/init-pki.sh"]
+    volumes:
+      - ziti-data:/data
+      - ./docker/ziti/init-pki.sh:/scripts/init-pki.sh:ro
+    networks:
+      - ziti-net
+
   ziti-controller:
     build:
       context: ./docker/ziti
@@ -12,6 +31,16 @@ services:
         ZITI_SHA: *ziti-sha
     image: openziti-controller-from-harness:local
     container_name: ziti-controller
+    command: ["controller", "run", "/data/quickstart/ctrl.yaml"]
+    depends_on:
+      init-pki:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "ziti", "edge", "login", "https://ziti-controller:1280", "-u", "admin", "-p", "admin123", "-y", "--ca", "/data/pki/root-ca/certs/root-ca.cert"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 10s
     volumes:
       - ziti-data:/data
     networks:
@@ -26,10 +55,27 @@ services:
         ZITI_SHA: *ziti-sha
     image: openziti-router-from-harness:local
     container_name: ziti-router
+    command: ["router", "run", "/data/quickstart/router-quickstart.yaml"]
     depends_on:
-      - ziti-controller
+      ziti-controller:
+        condition: service_healthy
     volumes:
       - ziti-data:/data
+    networks:
+      - ziti-net
+
+  init-config:
+    image: openziti-controller-from-harness:local
+    container_name: init-config
+    entrypoint: ["bash", "/scripts/init-config.sh"]
+    depends_on:
+      ziti-controller:
+        condition: service_healthy
+      ziti-router:
+        condition: service_started
+    volumes:
+      - ziti-data:/data
+      - ./docker/ziti/init-config.sh:/scripts/init-config.sh:ro
     networks:
       - ziti-net
 
