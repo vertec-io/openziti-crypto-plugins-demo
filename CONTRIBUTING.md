@@ -16,4 +16,4 @@
 
 ## How to add a cell
 
-<!-- Placeholder: filled by US-2813b with concrete .params example + pointer to runscenario.sh -->
+<!-- Placeholder: to be filled with concrete .params example + pointer to runscenario.sh -->
