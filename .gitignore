@@ -1,0 +1,10 @@
+evidence/*
+!evidence/.gitkeep
+*.pcap
+_runs/
+.idea/
+.vscode/
+target/
+build/
+node_modules/
+*.log
