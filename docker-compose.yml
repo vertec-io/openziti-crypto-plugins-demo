@@ -1,6 +1,7 @@
-# Pinned fork SHA from vertec-io/ziti feature/crypto-extensibility
-# Source: pinned-shas.txt ziti=d9a20d9dad8c58f098f989eb1668ed657c0500c5
+# Pinned fork SHAs from hook-enabled forks, branch feature/crypto-extensibility
+# Source: pinned-shas.txt
 x-ziti-sha: &ziti-sha "d9a20d9dad8c58f098f989eb1668ed657c0500c5"
+x-sdk-golang-sha: &sdk-golang-sha "6c0300dc1b3b739088f13d71a841ad6914af817b"
 
 services:
   init-pki:
@@ -78,6 +79,18 @@ services:
       - ./docker/ziti/init-config.sh:/scripts/init-config.sh:ro
     networks:
       - ziti-net
+
+  go-sdk:
+    build:
+      context: ./sample/go
+      dockerfile: Dockerfile
+      args:
+        SDK_GOLANG_SHA: *sdk-golang-sha
+    image: openziti-go-sdk-samples:local
+    container_name: go-sdk-build
+    entrypoint: ["echo", "build-only"]
+    profiles:
+      - build-only
 
 volumes:
   ziti-data:
