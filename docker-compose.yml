@@ -2,6 +2,7 @@
 # Source: pinned-shas.txt
 x-ziti-sha: &ziti-sha "d9a20d9dad8c58f098f989eb1668ed657c0500c5"
 x-sdk-golang-sha: &sdk-golang-sha "6c0300dc1b3b739088f13d71a841ad6914af817b"
+x-ziti-sdk-c-sha: &ziti-sdk-c-sha "53f2c67763797d53466ab5f786660fa26fce4939"
 
 services:
   init-pki:
@@ -88,6 +89,18 @@ services:
         SDK_GOLANG_SHA: *sdk-golang-sha
     image: openziti-go-sdk-samples:local
     container_name: go-sdk-build
+    entrypoint: ["echo", "build-only"]
+    profiles:
+      - build-only
+
+  c-sdk:
+    build:
+      context: ./sample/c
+      dockerfile: Dockerfile
+      args:
+        ZITI_SDK_C_SHA: *ziti-sdk-c-sha
+    image: openziti-c-sdk-samples:local
+    container_name: c-sdk-build
     entrypoint: ["echo", "build-only"]
     profiles:
       - build-only
