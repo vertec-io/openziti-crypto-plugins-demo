@@ -1,0 +1,41 @@
+# Pinned fork SHA from vertec-io/ziti feature/crypto-extensibility
+# Source: pinned-shas.txt ziti=d9a20d9dad8c58f098f989eb1668ed657c0500c5
+x-ziti-sha: &ziti-sha "d9a20d9dad8c58f098f989eb1668ed657c0500c5"
+
+services:
+  ziti-controller:
+    build:
+      context: ./docker/ziti
+      dockerfile: Dockerfile
+      target: ziti-controller
+      args:
+        ZITI_SHA: *ziti-sha
+    image: openziti-controller-from-harness:local
+    container_name: ziti-controller
+    volumes:
+      - ziti-data:/data
+    networks:
+      - ziti-net
+
+  ziti-router:
+    build:
+      context: ./docker/ziti
+      dockerfile: Dockerfile
+      target: ziti-router
+      args:
+        ZITI_SHA: *ziti-sha
+    image: openziti-router-from-harness:local
+    container_name: ziti-router
+    depends_on:
+      - ziti-controller
+    volumes:
+      - ziti-data:/data
+    networks:
+      - ziti-net
+
+volumes:
+  ziti-data:
+
+networks:
+  ziti-net:
+    driver: bridge
