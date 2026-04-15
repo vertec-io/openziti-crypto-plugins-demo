@@ -8,8 +8,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates python3 autoconf automake libtool \
     && rm -rf /var/lib/apt/lists/*
 
+# Pin vcpkg to the SDK's builtin-baseline era (2026.02.27) for cmake compat
 RUN git clone https://github.com/microsoft/vcpkg /opt/vcpkg && \
-    /opt/vcpkg/bootstrap-vcpkg.sh -disableMetrics
+    cd /opt/vcpkg && git checkout 62159a45e18f3a9ac0548628dcaf74fcb60c6ff9 && \
+    ./bootstrap-vcpkg.sh -disableMetrics
 
 ENV VCPKG_ROOT=/opt/vcpkg
 
@@ -35,14 +37,12 @@ add_executable(harness-host harness_host.c)
 target_link_libraries(harness-host PUBLIC ziti)
 HARNESS
 
-RUN --mount=type=cache,target=/opt/vcpkg/downloads \
-    cmake -B build -G Ninja \
+RUN cmake -B build -G Ninja \
       -DCMAKE_BUILD_TYPE=Release \
       -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake \
       -DVCPKG_TARGET_TRIPLET=x64-linux-static
 
-RUN --mount=type=cache,target=/opt/vcpkg/downloads \
-    cmake --build build --target harness-client harness-host
+RUN cmake --build build --target harness-client harness-host
 
 RUN mkdir -p /out && \
     cp build/harness-client /out/stock-client && \
@@ -78,15 +78,13 @@ add_executable(harness-host harness_host.c)
 target_link_libraries(harness-host PUBLIC ziti)
 HARNESS
 
-RUN --mount=type=cache,target=/opt/vcpkg/downloads \
-    cmake -B build -G Ninja \
+RUN cmake -B build -G Ninja \
       -DCMAKE_BUILD_TYPE=Release \
       -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake \
       -DVCPKG_TARGET_TRIPLET=x64-linux-static \
       -DZITI_CRYPTO_BACKEND=openssl
 
-RUN --mount=type=cache,target=/opt/vcpkg/downloads \
-    cmake --build build --target harness-client harness-host
+RUN cmake --build build --target harness-client harness-host
 
 RUN mkdir -p /out && \
     cp build/harness-client /out/hook-client && \
