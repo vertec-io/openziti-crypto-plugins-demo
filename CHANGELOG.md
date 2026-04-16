@@ -1,3 +1,52 @@
+## v0.2.0 — 2026-04-16
+
+Adds pre-built image distribution alongside the existing from-source path.
+`main` continues to build all five images from source (40-70 minute cold
+run); the new `prebuilt-images` branch pins published container images for
+a sub-fifteen-minute fast-demo path. Both branches land identical nine-cell
+matrix evidence.
+
+Main SHA at release: `ee4498f3276364524d4fb6b48e23013cbf0b2765`
+Prebuilt-images SHA at release: `e4789a26238b0105955297c21b2568add7659cbd`
+
+### Added
+
+- `.github/workflows/publish-images.yml` on `main` — every push builds,
+  structurally scans for `.git` leakage, and publishes the five images to
+  GitHub Container Registry under both `:latest` and `:sha-<short-sha>`
+  tags.
+- `prebuilt-images` branch — `docker-compose.yml` references the published
+  images instead of building, and `image-manifest.txt` records the
+  `sha256:...` digest of every pinned image.
+- `.github/workflows/validate-prebuilt.yml` on `prebuilt-images` — on every
+  push, PR, daily 06:00 UTC cron, and manual dispatch, pulls the five
+  images, verifies each digest against `image-manifest.txt`, and runs the
+  nine-cell matrix.
+- `.github/workflows/sync-from-main.yml` on `main` — when `publish-images`
+  completes on `main`, opens a PR against `prebuilt-images` updating
+  compose tags and `image-manifest.txt` to the new `main` SHA.
+- Branch protection on `prebuilt-images`: required PR review, required
+  status check (`validate-prebuilt / pull-verify-matrix`), no direct push,
+  no force-push, no branch deletion.
+
+### Changed
+
+- `README.md` on `main` gains a "Looking for a fast demo?" callout and a
+  "Which branch should I use?" section linking to `prebuilt-images`.
+- `README.md` on `prebuilt-images` rewritten to lead with the fast-path
+  quick-start and the image-provenance verification recipe.
+
+### Choose your path
+
+- `main` — audit the full build chain from source (40-70 minutes first run).
+- `prebuilt-images` — pull published images and run the matrix (under
+  fifteen minutes first run), trusting the chain of custody recorded in
+  `image-manifest.txt`.
+
+Both paths land the same nine-cell evidence.
+
+---
+
 ## v0.1.0 — 2026-04-16
 
 First tagged release of the OpenZiti crypto plugins demo harness. Reproducibly
