@@ -28,7 +28,7 @@ RUN git clone --depth 50 --branch feature/crypto-extensibility \
 
 # Build SDK and publish to local Maven repo (~/.m2/repository)
 RUN cd /tmp/sdk && \
-    ./gradlew :ziti:publishToMavenLocal --no-daemon --no-build-cache && \
+    ./gradlew publishToMavenLocal --no-daemon --no-build-cache && \
     rm -rf /tmp/sdk/.git
 
 # Detect published version

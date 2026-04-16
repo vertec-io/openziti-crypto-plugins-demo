@@ -2,7 +2,6 @@ import org.openziti.Ziti
 import org.openziti.ZitiAddress
 import java.io.File
 import java.nio.ByteBuffer
-import java.nio.channels.AsynchronousSocketChannel
 import java.util.concurrent.TimeUnit
 
 fun main(args: Array<String>) {
@@ -24,7 +23,7 @@ fun main(args: Array<String>) {
 
     val ctx = Ziti.newContext(File(identityPath), charArrayOf())
     try {
-        val channel = ctx.open() as AsynchronousSocketChannel
+        val channel = ctx.open()
         channel.connect(ZitiAddress.Dial(serviceName)).get(30, TimeUnit.SECONDS)
 
         val probe = ByteBuffer.wrap("cipher-probe".toByteArray())

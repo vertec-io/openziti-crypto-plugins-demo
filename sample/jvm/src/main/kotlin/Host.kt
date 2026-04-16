@@ -2,8 +2,6 @@ import org.openziti.Ziti
 import org.openziti.ZitiAddress
 import java.io.File
 import java.nio.ByteBuffer
-import java.nio.channels.AsynchronousServerSocketChannel
-import java.nio.channels.AsynchronousSocketChannel
 import java.util.concurrent.TimeUnit
 
 fun main(args: Array<String>) {
@@ -25,7 +23,7 @@ fun main(args: Array<String>) {
 
     val ctx = Ziti.newContext(File(identityPath), charArrayOf())
     try {
-        val server = ctx.openServer() as AsynchronousServerSocketChannel
+        val server = ctx.openServer()
         server.bind(ZitiAddress.Bind(serviceName))
 
         val client = server.accept().get(60, TimeUnit.SECONDS) as AsynchronousSocketChannel
