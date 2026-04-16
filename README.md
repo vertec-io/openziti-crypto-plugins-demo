@@ -65,6 +65,11 @@ Prose porting notes for C and JVM are in
 
 ## Quick Start
 
+> **Looking for a fast demo?** The companion [`prebuilt-images`](../../tree/prebuilt-images)
+> branch swaps the five `docker compose build` steps for `image:` references
+> to published images, trimming first-run wall-clock to about 15 minutes.
+> Continue below if you want to build everything from source.
+
 ```bash
 git clone https://github.com/vertec-io/openziti-crypto-plugins-demo.git
 cd openziti-crypto-plugins-demo
@@ -78,8 +83,14 @@ First run from a clean machine: 40-70 minutes (Docker builds five images from
 source — ziti-controller, ziti-router, sample/go, sample/c, sample/jvm).
 Subsequent matrix runs against the built images: under 5 minutes.
 
-> A planned `prebuilt-images` branch will provide pre-built images for
-> reviewers who prefer a ~10-minute pull over a from-source build.
+### Which branch should I use?
+
+- **`main`** (this branch) — full audit trail, reproducible from source;
+  first run 40-70 minutes on a clean machine.
+- **[`prebuilt-images`](../../tree/prebuilt-images)** — pulls published
+  images from GitHub Container Registry; first run under 15 minutes.
+- Both branches land identical per-cell matrix evidence; only the image
+  acquisition path and wall-clock differ.
 
 Results are written to `evidence/` — one file per cell plus a
 `matrix-summary.txt` with per-cell verdicts and wall-clock timing.
