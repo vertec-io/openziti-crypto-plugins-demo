@@ -2,11 +2,11 @@
 # most recent main push. Regenerate via: gh workflow run publish-images.yml
 # (on main) + run sync-from-main.yml to open a new PR against this branch.
 
-x-controller-image: &controller-image ghcr.io/vertec-io/openziti-crypto-plugins-demo/ziti-controller:sha-f8ceff1058f6
-x-router-image: &router-image ghcr.io/vertec-io/openziti-crypto-plugins-demo/ziti-router:sha-f8ceff1058f6
-x-go-image: &go-image ghcr.io/vertec-io/openziti-crypto-plugins-demo/sample-go:sha-f8ceff1058f6
-x-c-image: &c-image ghcr.io/vertec-io/openziti-crypto-plugins-demo/sample-c:sha-f8ceff1058f6
-x-jvm-image: &jvm-image ghcr.io/vertec-io/openziti-crypto-plugins-demo/sample-jvm:sha-f8ceff1058f6
+x-controller-image: &controller-image ghcr.io/vertec-io/openziti-crypto-plugins-demo/ziti-controller:sha-51b3babfa87d
+x-router-image: &router-image ghcr.io/vertec-io/openziti-crypto-plugins-demo/ziti-router:sha-51b3babfa87d
+x-go-image: &go-image ghcr.io/vertec-io/openziti-crypto-plugins-demo/sample-go:sha-51b3babfa87d
+x-c-image: &c-image ghcr.io/vertec-io/openziti-crypto-plugins-demo/sample-c:sha-51b3babfa87d
+x-jvm-image: &jvm-image ghcr.io/vertec-io/openziti-crypto-plugins-demo/sample-jvm:sha-51b3babfa87d
 
 services:
   init-pki:
