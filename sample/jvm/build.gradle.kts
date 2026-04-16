@@ -1,6 +1,6 @@
 plugins {
-    kotlin("jvm") version "2.1.20"
-    id("com.gradleup.shadow") version "9.0.0-beta12"
+    kotlin("jvm") version "2.0.21"
+    id("com.gradleup.shadow") version "8.3.6"
 }
 
 val variant: String = project.findProperty("variant") as? String ?: "stock"
