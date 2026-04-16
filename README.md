@@ -4,7 +4,7 @@ An independent, reproducible demonstration of the cipher-negotiation extension
 hooks proposed for [OpenZiti](https://github.com/openziti/ziti). This harness
 builds controller, router, and SDK sample binaries from small, auditable forks,
 runs a nine-cell interoperability matrix, and produces per-cell evidence files —
-all from a single `docker compose` invocation that completes in under 15 minutes.
+all from a single `docker compose` invocation.
 
 This repository is a **standalone demonstration tool**. It is not part of the
 OpenZiti project itself and carries no endorsement from the OpenZiti maintainers.
@@ -72,6 +72,13 @@ docker compose up --build -d
 ./scripts/wait-for-ready.sh
 ./runmatrix.sh --all
 ```
+
+First run from a clean machine: 40-70 minutes (Docker builds five images from
+source — ziti-controller, ziti-router, sample/go, sample/c, sample/jvm).
+Subsequent matrix runs against the built images: under 5 minutes.
+
+> A planned `prebuilt-images` branch will provide pre-built images for
+> reviewers who prefer a ~10-minute pull over a from-source build.
 
 Results are written to `evidence/` — one file per cell plus a
 `matrix-summary.txt` with per-cell verdicts and wall-clock timing.
