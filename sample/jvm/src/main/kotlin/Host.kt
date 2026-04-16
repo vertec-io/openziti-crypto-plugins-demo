@@ -26,7 +26,7 @@ fun main(args: Array<String>) {
         val server = ctx.openServer()
         server.bind(ZitiAddress.Bind(serviceName))
 
-        val client = server.accept().get(60, TimeUnit.SECONDS) as AsynchronousSocketChannel
+        val client = server.accept().get(60, TimeUnit.SECONDS)
         val buf = ByteBuffer.allocate(256)
         val n = client.read(buf).get(10, TimeUnit.SECONDS)
         buf.flip()
