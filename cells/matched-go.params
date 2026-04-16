@@ -1,0 +1,7 @@
+# Matched: hook Go client + hook Go host (both with AES-256-GCM plugin)
+# Both negotiate AES-256-GCM (cipher ID 2)
+CLIENT_VARIANT=hook-go
+HOST_VARIANT=hook-go
+CLIENT_PREFS=2
+HOST_PREFS=2
+EXPECTED_OUTCOME=PASS
