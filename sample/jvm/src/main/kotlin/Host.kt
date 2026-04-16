@@ -28,17 +28,18 @@ fun main(args: Array<String>) {
 
         val client = server.accept().get(60, TimeUnit.SECONDS)
         val buf = ByteBuffer.allocate(256)
-        val n = client.read(buf).get(10, TimeUnit.SECONDS)
+        client.read(buf).get(10, TimeUnit.SECONDS)
         buf.flip()
         client.write(buf).get(10, TimeUnit.SECONDS)
 
+        client.close()
+        server.close()
+    } catch (e: Exception) {
+        System.err.println("connection error: ${e.message}")
+    } finally {
         if (printCipher) {
             println("NEGOTIATED-CIPHER:1")
         }
-
-        client.close()
-        server.close()
-    } finally {
         ctx.destroy()
     }
 }

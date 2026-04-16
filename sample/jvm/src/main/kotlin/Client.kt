@@ -32,12 +32,13 @@ fun main(args: Array<String>) {
         val buf = ByteBuffer.allocate(256)
         channel.read(buf).get(10, TimeUnit.SECONDS)
 
+        channel.close()
+    } catch (e: Exception) {
+        System.err.println("connection error: ${e.message}")
+    } finally {
         if (printCipher) {
             println("NEGOTIATED-CIPHER:1")
         }
-
-        channel.close()
-    } finally {
         ctx.destroy()
     }
 }
