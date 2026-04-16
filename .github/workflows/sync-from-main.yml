@@ -1,0 +1,162 @@
+name: sync-from-main
+
+on:
+  workflow_run:
+    workflows: [publish-images]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: sync-from-main
+  cancel-in-progress: false
+
+jobs:
+  open-sync-pr:
+    name: open-sync-pr
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Resolve triggering run + head SHA
+        id: resolve
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            RUN_ID="${{ github.event.workflow_run.id }}"
+            HEAD_SHA_FULL="${{ github.event.workflow_run.head_sha }}"
+          else
+            latest=$(gh run list --workflow publish-images.yml --branch main --status success --limit 1 --json databaseId,headSha --jq '.[0] | "\(.databaseId) \(.headSha)"' --repo "${{ github.repository }}")
+            RUN_ID="${latest%% *}"
+            HEAD_SHA_FULL="${latest##* }"
+          fi
+          if [ -z "$RUN_ID" ] || [ -z "$HEAD_SHA_FULL" ]; then
+            echo "ERROR: could not determine triggering publish-images run."
+            exit 1
+          fi
+          SHORT_SHA="${HEAD_SHA_FULL:0:12}"
+          {
+            echo "run_id=${RUN_ID}"
+            echo "head_sha_full=${HEAD_SHA_FULL}"
+            echo "short_sha=${SHORT_SHA}"
+            echo "sync_branch=sync-main-${SHORT_SHA}"
+            echo "manifest_name=image-manifest-${SHORT_SHA}.txt"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Checkout prebuilt-images
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: prebuilt-images
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download image-manifest from triggering run
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        with:
+          name: ${{ steps.resolve.outputs.manifest_name }}
+          path: ./.sync-manifest
+          run-id: ${{ steps.resolve.outputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Validate manifest contents
+        run: |
+          set -euo pipefail
+          src="./.sync-manifest/${{ steps.resolve.outputs.manifest_name }}"
+          if [ ! -f "$src" ]; then
+            echo "ERROR: manifest artifact missing at $src"
+            exit 1
+          fi
+          if [ "$(grep -cE '^(ziti-controller|ziti-router|sample-go|sample-c|sample-jvm)=' "$src")" -ne 5 ]; then
+            echo "ERROR: manifest does not contain 5 image lines"
+            cat "$src"
+            exit 1
+          fi
+
+      - name: Prepare or refresh sync branch
+        id: branch
+        run: |
+          set -euo pipefail
+          SYNC_BRANCH="${{ steps.resolve.outputs.sync_branch }}"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          EXISTING_PR=$(gh pr list --base prebuilt-images --head "$SYNC_BRANCH" --state open --json number --jq '.[0].number // empty' --repo "${{ github.repository }}")
+          if git ls-remote --exit-code --heads origin "$SYNC_BRANCH" >/dev/null 2>&1; then
+            git fetch origin "$SYNC_BRANCH"
+            git checkout "$SYNC_BRANCH"
+            git reset --hard origin/prebuilt-images
+          else
+            git checkout -b "$SYNC_BRANCH"
+          fi
+          {
+            echo "existing_pr=${EXISTING_PR}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Rewrite docker-compose.yml + replace image-manifest.txt
+        run: |
+          set -euo pipefail
+          SHORT_SHA="${{ steps.resolve.outputs.short_sha }}"
+          sed -i -E "s|(ghcr\\.io/vertec-io/openziti-crypto-plugins-demo/[a-z0-9-]+):sha-[0-9a-f]{12}|\\1:sha-${SHORT_SHA}|g" docker-compose.yml
+          if [ "$(grep -c 'build:' docker-compose.yml)" -ne 0 ]; then
+            echo "ERROR: docker-compose.yml unexpectedly contains build: stanzas"
+            exit 1
+          fi
+          if [ "$(grep -c "sha-${SHORT_SHA}" docker-compose.yml)" -ne 5 ]; then
+            echo "ERROR: expected 5 image anchors pinned to sha-${SHORT_SHA}"
+            grep -n "sha-" docker-compose.yml || true
+            exit 1
+          fi
+          cp "./.sync-manifest/${{ steps.resolve.outputs.manifest_name }}" ./image-manifest.txt
+          header="# image digests for main@${SHORT_SHA}; regenerate with gh workflow run publish-images.yml"
+          { echo "$header"; grep -vE '^#' image-manifest.txt | sort; } > image-manifest.txt.new
+          mv image-manifest.txt.new image-manifest.txt
+
+      - name: Commit and push sync branch
+        id: commit
+        run: |
+          set -euo pipefail
+          rm -rf ./.sync-manifest
+          git add docker-compose.yml image-manifest.txt
+          if git diff --cached --quiet; then
+            echo "no_changes=true" >> "$GITHUB_OUTPUT"
+            echo "No changes to commit; sync branch already at target state."
+            exit 0
+          fi
+          git commit -m "sync: prebuilt-images to main@${{ steps.resolve.outputs.short_sha }}"
+          git push -u origin "${{ steps.resolve.outputs.sync_branch }}"
+
+      - name: Compose structured PR body
+        id: body
+        if: steps.commit.outputs.no_changes != 'true'
+        run: |
+          set -euo pipefail
+          SHORT_SHA="${{ steps.resolve.outputs.short_sha }}"
+          {
+            echo "Source main SHA: ${SHORT_SHA}"
+            echo "Image manifest:"
+            for name in ziti-controller ziti-router sample-go sample-c sample-jvm; do
+              grep "^${name}=" image-manifest.txt
+            done
+            echo "Auto-generated by .github/workflows/sync-from-main.yml; please review before merge."
+          } > pr-body.txt
+          {
+            echo 'body_path=pr-body.txt'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create or update sync PR
+        if: steps.commit.outputs.no_changes != 'true'
+        run: |
+          set -euo pipefail
+          SYNC_BRANCH="${{ steps.resolve.outputs.sync_branch }}"
+          TITLE="Sync prebuilt-images to main@${{ steps.resolve.outputs.short_sha }}"
+          EXISTING_PR="${{ steps.branch.outputs.existing_pr }}"
+          if [ -n "${EXISTING_PR}" ]; then
+            gh pr edit "${EXISTING_PR}" --title "${TITLE}" --body-file pr-body.txt --repo "${{ github.repository }}"
+          else
+            gh pr create --base prebuilt-images --head "${SYNC_BRANCH}" --title "${TITLE}" --body-file pr-body.txt --repo "${{ github.repository }}"
+          fi
