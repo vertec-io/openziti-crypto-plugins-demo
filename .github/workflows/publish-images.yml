@@ -17,7 +17,7 @@ jobs:
   build-scan-publish:
     name: build-scan-publish-${{ matrix.image.name }}
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 180
     strategy:
       fail-fast: true
       matrix:
@@ -29,6 +29,7 @@ jobs:
             sha_arg: ZITI_SHA
             sha_var: ziti
             build_contexts: ''
+            cache_share: ziti-controller
           - name: ziti-router
             context: ./docker/ziti
             dockerfile: ./docker/ziti/Dockerfile
@@ -36,6 +37,7 @@ jobs:
             sha_arg: ZITI_SHA
             sha_var: ziti
             build_contexts: ''
+            cache_share: ziti-router
           - name: sample-go
             context: ./sample/go
             dockerfile: ./sample/go/Dockerfile
@@ -43,6 +45,7 @@ jobs:
             sha_arg: SDK_GOLANG_SHA
             sha_var: sdk_golang
             build_contexts: 'plugin=./reference-plugin/go'
+            cache_share: go-sdk
           - name: sample-c
             context: ./sample/c
             dockerfile: ./sample/c/Dockerfile
@@ -50,6 +53,7 @@ jobs:
             sha_arg: ZITI_SDK_C_SHA
             sha_var: ziti_sdk_c
             build_contexts: ''
+            cache_share: c-sdk
           - name: sample-jvm
             context: ./sample/jvm
             dockerfile: ./sample/jvm/Dockerfile
@@ -57,6 +61,7 @@ jobs:
             sha_arg: ZITI_SDK_JVM_SHA
             sha_var: ziti_sdk_jvm
             build_contexts: ''
+            cache_share: jvm-sdk
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -125,7 +130,9 @@ jobs:
           tags: localscan/${{ matrix.image.name }}:scan
           load: true
           push: false
-          cache-from: type=gha,scope=publish-${{ matrix.image.name }}
+          cache-from: |
+            type=gha,scope=publish-${{ matrix.image.name }}
+            type=gha,scope=${{ matrix.image.cache_share }}
           cache-to: type=gha,scope=publish-${{ matrix.image.name }},mode=max
 
       - name: Structural check 1 - no .git/ entries in any layer
@@ -180,7 +187,9 @@ jobs:
             ghcr.io/vertec-io/openziti-crypto-plugins-demo/${{ matrix.image.name }}:sha-${{ steps.sha.outputs.short }}
           load: false
           push: true
-          cache-from: type=gha,scope=publish-${{ matrix.image.name }}
+          cache-from: |
+            type=gha,scope=publish-${{ matrix.image.name }}
+            type=gha,scope=${{ matrix.image.cache_share }}
 
       - name: Validate digest captured
         run: |
