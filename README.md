@@ -68,7 +68,8 @@ Prose porting notes for C and JVM are in
 ```bash
 git clone https://github.com/vertec-io/openziti-crypto-plugins-demo.git
 cd openziti-crypto-plugins-demo
-docker compose up --build -d
+docker compose --profile build-only build   # Build all SDK sample images
+docker compose up --build -d                # Build + start controller & router
 ./scripts/wait-for-ready.sh
 ./runmatrix.sh --all
 ```
