@@ -128,7 +128,7 @@ jobs:
             exit 0
           fi
           git commit -m "sync: prebuilt-images to main@${{ steps.resolve.outputs.short_sha }}"
-          git push -u origin "${{ steps.resolve.outputs.sync_branch }}"
+          git push --force-with-lease -u origin "${{ steps.resolve.outputs.sync_branch }}"
 
       - name: Compose structured PR body
         id: body
