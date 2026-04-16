@@ -50,6 +50,13 @@ jobs:
             tag="${rest%%=*}"
             expected_digest="${rest#*=}"
             ref="${registry}/${name}:${tag}"
+            if ! docker image inspect "$ref" >/dev/null 2>&1; then
+              if ! docker pull "$ref" >/dev/null 2>&1; then
+                echo "ERROR: docker pull failed for $ref (image unreachable)"
+                fail=1
+                continue
+              fi
+            fi
             actual="$(docker inspect --format '{{index .RepoDigests 0}}' "$ref" 2>/dev/null || true)"
             actual_digest="${actual##*@}"
             if [ -z "$actual_digest" ] || [ "$actual_digest" = "$actual" ]; then
