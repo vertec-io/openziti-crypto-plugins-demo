@@ -1,0 +1,10 @@
+# Mismatched: hook-on Go client (AES-256-GCM, cipher ID 2)
+# vs hook-off Go host (no plugin, only supports cipher ID 1)
+# No mutually supported cipher — both sides reject.
+# Cipher ID 99 in HOST_PREFS is a documentation placeholder for
+# "the host does not advertise the cipher the client wants".
+CLIENT_VARIANT=hook-go
+HOST_VARIANT=hookoff-go
+CLIENT_PREFS=2
+HOST_PREFS=99
+EXPECTED_OUTCOME=REJECT

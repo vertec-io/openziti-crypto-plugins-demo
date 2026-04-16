@@ -1,0 +1,9 @@
+# Hook neutrality: hook-off Go client + hook-off Go host
+# Fork SDK with hook API but NO plugin loaded — should negotiate
+# default ChaCha20-Poly1305 (cipher ID 1), proving the hook API
+# is transparent when no alternate cipher is registered.
+CLIENT_VARIANT=hookoff-go
+HOST_VARIANT=hookoff-go
+CLIENT_PREFS=1
+HOST_PREFS=1
+EXPECTED_OUTCOME=PASS

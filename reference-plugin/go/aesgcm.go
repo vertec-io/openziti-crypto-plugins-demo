@@ -45,6 +45,12 @@ func (*provider) PreferencesBytes() []byte           { return []byte{byte(Cipher
 
 func (p *provider) NegotiateCipherAsServer(peerPrefs []secretstream.CipherID) (secretstream.CipherID, error) {
 	if len(peerPrefs) == 0 {
+		// Empty peerPrefs: the peer did not advertise preferences
+		// (legacy peer or router did not forward response headers).
+		// Return our default cipher. This is correct when both
+		// endpoints load the same plugin — both independently pick
+		// AES-256-GCM. Against a stock peer this causes a wire
+		// mismatch; a production plugin would support both ciphers.
 		return CipherAES256GCM, nil
 	}
 	for _, id := range peerPrefs {

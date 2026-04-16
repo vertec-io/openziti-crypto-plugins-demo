@@ -1,0 +1,7 @@
+# Baseline: stock JVM client + stock JVM host
+# Both use default ChaCha20-Poly1305 (cipher ID 1)
+CLIENT_VARIANT=stock-jvm
+HOST_VARIANT=stock-jvm
+CLIENT_PREFS=1
+HOST_PREFS=1
+EXPECTED_OUTCOME=PASS

@@ -57,6 +57,15 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     go build -tags hook -trimpath -ldflags='-s -w -buildid=' -o /out/hook-host ./host/
 
+# Hook-off: fork SDK without plugin (proves hook API is transparent)
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go build -trimpath -ldflags='-s -w -buildid=' -o /out/hookoff-client ./client/
+
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go build -trimpath -ldflags='-s -w -buildid=' -o /out/hookoff-host ./host/
+
 # --- Final image ---
 FROM debian:bookworm-slim
 
@@ -64,6 +73,8 @@ COPY --from=stock-builder /out/stock-client /usr/local/bin/stock-client
 COPY --from=stock-builder /out/stock-host /usr/local/bin/stock-host
 COPY --from=hook-builder /out/hook-client /usr/local/bin/hook-client
 COPY --from=hook-builder /out/hook-host /usr/local/bin/hook-host
+COPY --from=hook-builder /out/hookoff-client /usr/local/bin/hookoff-client
+COPY --from=hook-builder /out/hookoff-host /usr/local/bin/hookoff-host
 
 LABEL org.opencontainers.image.title="openziti-go-sdk-samples"
 LABEL org.opencontainers.image.source="https://github.com/vertec-io/openziti-crypto-plugins-demo"

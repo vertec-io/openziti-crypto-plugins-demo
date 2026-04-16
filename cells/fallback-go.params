@@ -1,0 +1,11 @@
+# Fallback: hook-on Go client (AES-256-GCM plugin loaded)
+# vs stock Go host (upstream SDK, no hook API)
+# The stock host has no cipher-preferences header. The reference
+# plugin only supports AES-256-GCM and rejects empty peer prefs
+# (no ChaCha20 fallback). Both sides reject. A production plugin
+# that supports both ciphers would fall back to ChaCha20 here.
+CLIENT_VARIANT=hook-go
+HOST_VARIANT=stock-go
+CLIENT_PREFS=2
+HOST_PREFS=
+EXPECTED_OUTCOME=REJECT

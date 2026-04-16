@@ -1,0 +1,8 @@
+# Hook neutrality: hook C client + hook C host
+# Fork SDK built with openssl backend but no alternate cipher plugin.
+# Should negotiate default ChaCha20-Poly1305 (cipher ID 1).
+CLIENT_VARIANT=hook-c
+HOST_VARIANT=hook-c
+CLIENT_PREFS=1
+HOST_PREFS=1
+EXPECTED_OUTCOME=PASS

@@ -34,12 +34,13 @@ resolve_variant() {
   local image binary
 
   case "$variant" in
-    stock-go)  image="openziti-go-sdk-samples:local";  binary="/usr/local/bin/stock-${role}" ;;
-    hook-go)   image="openziti-go-sdk-samples:local";  binary="/usr/local/bin/hook-${role}" ;;
-    stock-c)   image="openziti-c-sdk-samples:local";   binary="/usr/local/bin/stock-${role}" ;;
-    hook-c)    image="openziti-c-sdk-samples:local";   binary="/usr/local/bin/hook-${role}" ;;
-    stock-jvm) image="openziti-jvm-sdk-samples:local"; binary="java -jar /app/stock-${role}.jar" ;;
-    hook-jvm)  image="openziti-jvm-sdk-samples:local"; binary="java -jar /app/hook-${role}.jar" ;;
+    stock-go)   image="openziti-go-sdk-samples:local";  binary="/usr/local/bin/stock-${role}" ;;
+    hook-go)    image="openziti-go-sdk-samples:local";  binary="/usr/local/bin/hook-${role}" ;;
+    hookoff-go) image="openziti-go-sdk-samples:local";  binary="/usr/local/bin/hookoff-${role}" ;;
+    stock-c)    image="openziti-c-sdk-samples:local";   binary="/usr/local/bin/stock-${role}" ;;
+    hook-c)     image="openziti-c-sdk-samples:local";   binary="/usr/local/bin/hook-${role}" ;;
+    stock-jvm)  image="openziti-jvm-sdk-samples:local"; binary="java -jar /app/stock-${role}.jar" ;;
+    hook-jvm)   image="openziti-jvm-sdk-samples:local"; binary="java -jar /app/hook-${role}.jar" ;;
     *) echo "ERROR: unknown variant: $variant" >&2; exit 1 ;;
   esac
 
@@ -83,8 +84,12 @@ docker run -d \
   $HOST_BINARY --identity "$HOST_IDENTITY" --print-cipher \
   >/dev/null 2>&1
 
-# Wait for host to be listening, then launch client
-sleep 5
+# Wait for host to be listening (JVM needs longer for startup + auth)
+HOST_WAIT=5
+case "$HOST_VARIANT" in
+  *-jvm) HOST_WAIT=90 ;;
+esac
+sleep "$HOST_WAIT"
 
 CLIENT_OUTPUT=$(timeout "$TIMEOUT_SECS" docker run \
   --name "$CLIENT_CONTAINER" \

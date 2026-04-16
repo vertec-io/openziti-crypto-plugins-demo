@@ -1,0 +1,7 @@
+# Baseline: stock C client + stock C host
+# Both use default ChaCha20-Poly1305 (cipher ID 1)
+CLIENT_VARIANT=stock-c
+HOST_VARIANT=stock-c
+CLIENT_PREFS=1
+HOST_PREFS=1
+EXPECTED_OUTCOME=PASS
