@@ -36,6 +36,7 @@ RUN git clone --depth 1 --branch feature/crypto-extensibility \
 WORKDIR /build
 COPY client/ client/
 COPY host/ host/
+COPY --from=plugin / plugin/
 
 ENV GONOSUMCHECK=github.com/vertec-io/*
 ENV GONOSUMDB=github.com/vertec-io/*
@@ -50,11 +51,11 @@ RUN go mod init sample-go && \
 
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    go build -trimpath -ldflags='-s -w -buildid=' -o /out/hook-client ./client/
+    go build -tags hook -trimpath -ldflags='-s -w -buildid=' -o /out/hook-client ./client/
 
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    go build -trimpath -ldflags='-s -w -buildid=' -o /out/hook-host ./host/
+    go build -tags hook -trimpath -ldflags='-s -w -buildid=' -o /out/hook-host ./host/
 
 # --- Final image ---
 FROM debian:bookworm-slim

@@ -86,6 +86,8 @@ services:
     build:
       context: ./sample/go
       dockerfile: Dockerfile
+      additional_contexts:
+        plugin: ./reference-plugin/go
       args:
         SDK_GOLANG_SHA: *sdk-golang-sha
     image: openziti-go-sdk-samples:local
