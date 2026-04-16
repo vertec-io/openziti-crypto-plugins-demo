@@ -9,6 +9,36 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Resolve sample image aliases. runscenario.sh expects the local tags
+# openziti-{go,c,jvm}-sdk-samples:local. On the from-source branch these
+# are produced by `docker compose build`. On a pull-only branch they
+# are absent and `docker compose pull` skips them (they sit behind
+# `profiles: [build-only]` for the from-source workflow). If the local
+# tag is missing and image-manifest.txt is present, pull the ghcr.io
+# image by SHA tag and alias it to the local tag so runscenario.sh
+# works unchanged.
+if [[ -f "$SCRIPT_DIR/image-manifest.txt" ]]; then
+  SAMPLE_SHA=$(grep -oE 'sha-[0-9a-f]{12}' "$SCRIPT_DIR/image-manifest.txt" | head -1 || true)
+  if [[ -n "$SAMPLE_SHA" ]]; then
+    GHCR_PREFIX="ghcr.io/vertec-io/openziti-crypto-plugins-demo"
+    for pair in "sample-go:openziti-go-sdk-samples:local" \
+                "sample-c:openziti-c-sdk-samples:local" \
+                "sample-jvm:openziti-jvm-sdk-samples:local"; do
+      remote_name="${pair%%:*}"
+      local_tag="${pair#*:}"
+      if ! docker image inspect "$local_tag" >/dev/null 2>&1; then
+        remote_ref="${GHCR_PREFIX}/${remote_name}:${SAMPLE_SHA}"
+        docker image inspect "$remote_ref" >/dev/null 2>&1 \
+          || docker pull "$remote_ref" >/dev/null 2>&1 \
+          || true
+        if docker image inspect "$remote_ref" >/dev/null 2>&1; then
+          docker tag "$remote_ref" "$local_tag"
+        fi
+      fi
+    done
+  fi
+fi
+
 # Cell groups
 BASELINE_CELLS="baseline-go baseline-c baseline-jvm"
 NEUTRALITY_CELLS="neutrality-go neutrality-c neutrality-jvm"

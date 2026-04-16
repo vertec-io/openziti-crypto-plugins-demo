@@ -1,19 +1,16 @@
-# Pinned fork SHAs from hook-enabled forks, branch feature/crypto-extensibility
-# Source: pinned-shas.txt
-x-ziti-sha: &ziti-sha "d9a20d9dad8c58f098f989eb1668ed657c0500c5"
-x-sdk-golang-sha: &sdk-golang-sha "6c0300dc1b3b739088f13d71a841ad6914af817b"
-x-ziti-sdk-c-sha: &ziti-sdk-c-sha "53f2c67763797d53466ab5f786660fa26fce4939"
-x-ziti-sdk-jvm-sha: &ziti-sdk-jvm-sha "67e91851c81ba6b82db1d768bf6673e187cc036a"
+# prebuilt-images branch — services reference GHCR-published images from the
+# most recent main push. Regenerate via: gh workflow run publish-images.yml
+# (on main) + run sync-from-main.yml to open a new PR against this branch.
+
+x-controller-image: &controller-image ghcr.io/vertec-io/openziti-crypto-plugins-demo/ziti-controller:sha-f8ceff1058f6
+x-router-image: &router-image ghcr.io/vertec-io/openziti-crypto-plugins-demo/ziti-router:sha-f8ceff1058f6
+x-go-image: &go-image ghcr.io/vertec-io/openziti-crypto-plugins-demo/sample-go:sha-f8ceff1058f6
+x-c-image: &c-image ghcr.io/vertec-io/openziti-crypto-plugins-demo/sample-c:sha-f8ceff1058f6
+x-jvm-image: &jvm-image ghcr.io/vertec-io/openziti-crypto-plugins-demo/sample-jvm:sha-f8ceff1058f6
 
 services:
   init-pki:
-    build:
-      context: ./docker/ziti
-      dockerfile: Dockerfile
-      target: ziti-controller
-      args:
-        ZITI_SHA: *ziti-sha
-    image: openziti-controller-from-harness:local
+    image: *controller-image
     container_name: init-pki
     extra_hosts:
       - "ziti-controller:127.0.0.1"
@@ -26,13 +23,7 @@ services:
       - ziti-net
 
   ziti-controller:
-    build:
-      context: ./docker/ziti
-      dockerfile: Dockerfile
-      target: ziti-controller
-      args:
-        ZITI_SHA: *ziti-sha
-    image: openziti-controller-from-harness:local
+    image: *controller-image
     container_name: ziti-controller
     command: ["controller", "run", "/data/quickstart/ctrl.yaml"]
     depends_on:
@@ -50,13 +41,7 @@ services:
       - ziti-net
 
   ziti-router:
-    build:
-      context: ./docker/ziti
-      dockerfile: Dockerfile
-      target: ziti-router
-      args:
-        ZITI_SHA: *ziti-sha
-    image: openziti-router-from-harness:local
+    image: *router-image
     container_name: ziti-router
     command: ["router", "run", "/data/quickstart/router-quickstart.yaml"]
     depends_on:
@@ -68,7 +53,7 @@ services:
       - ziti-net
 
   init-config:
-    image: openziti-controller-from-harness:local
+    image: *controller-image
     container_name: init-config
     entrypoint: ["bash", "/scripts/init-config.sh"]
     depends_on:
@@ -83,38 +68,21 @@ services:
       - ziti-net
 
   go-sdk:
-    build:
-      context: ./sample/go
-      dockerfile: Dockerfile
-      additional_contexts:
-        plugin: ./reference-plugin/go
-      args:
-        SDK_GOLANG_SHA: *sdk-golang-sha
-    image: openziti-go-sdk-samples:local
+    image: *go-image
     container_name: go-sdk-build
     entrypoint: ["echo", "build-only"]
     profiles:
       - build-only
 
   c-sdk:
-    build:
-      context: ./sample/c
-      dockerfile: Dockerfile
-      args:
-        ZITI_SDK_C_SHA: *ziti-sdk-c-sha
-    image: openziti-c-sdk-samples:local
+    image: *c-image
     container_name: c-sdk-build
     entrypoint: ["echo", "build-only"]
     profiles:
       - build-only
 
   jvm-sdk:
-    build:
-      context: ./sample/jvm
-      dockerfile: Dockerfile
-      args:
-        ZITI_SDK_JVM_SHA: *ziti-sdk-jvm-sha
-    image: openziti-jvm-sdk-samples:local
+    image: *jvm-image
     container_name: jvm-sdk-build
     entrypoint: ["echo", "build-only"]
     profiles:
