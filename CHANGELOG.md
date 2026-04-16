@@ -1,3 +1,44 @@
+## v0.2.0-on-prebuilt-images — 2026-04-16
+
+Companion release on the `prebuilt-images` branch for `main`'s `v0.2.0`.
+This branch pulls published container images from GitHub Container
+Registry and runs the same nine-cell matrix in under fifteen minutes
+instead of building from source.
+
+Main SHA at release: `fed9cdae733bf49b55dc691adda166c324231e2b`
+Prebuilt-images SHA at release: `e4789a26238b0105955297c21b2568add7659cbd`
+
+See `main`'s `v0.2.0` release notes for the full change log:
+https://github.com/vertec-io/openziti-crypto-plugins-demo/releases/tag/v0.2.0
+
+### Added on this branch
+
+- `docker-compose.yml` pinned to `image:` references for the five
+  published images under `:sha-<short>` tags.
+- `image-manifest.txt` recording the `sha256:...` digest of each pinned
+  image, regenerated from the matching `publish-images` workflow
+  artifact on `main`.
+- `.github/workflows/validate-prebuilt.yml` — pulls, digest-verifies, and
+  runs the nine-cell matrix on every push, PR, daily 06:00 UTC cron, and
+  manual dispatch.
+- Branch protection: required PR review, required `validate-prebuilt`
+  status check, no direct push.
+- `README.md` rewritten around the fast-path quick-start and the
+  image-provenance verification recipe.
+
+### Verify any image digest
+
+```
+docker pull ghcr.io/vertec-io/openziti-crypto-plugins-demo/<name>:sha-<short>
+docker inspect --format '{{index .RepoDigests 0}}' \
+  ghcr.io/vertec-io/openziti-crypto-plugins-demo/<name>:sha-<short>
+```
+
+The reported digest must match the corresponding line in
+`image-manifest.txt`.
+
+---
+
 ## v0.1.0 — 2026-04-16
 
 First tagged release of the OpenZiti crypto plugins demo harness. Reproducibly
