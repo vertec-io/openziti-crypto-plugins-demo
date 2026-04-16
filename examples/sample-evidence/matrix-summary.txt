@@ -1,0 +1,13 @@
+Matrix run: 2026-04-16T02:15:40Z
+Wall clock: 262s
+Total: 9 | Pass: 9 | Fail: 0
+
+  baseline-go: PASS (9s)
+  baseline-c: PASS (10s)
+  baseline-jvm: PASS (97s)
+  neutrality-go: PASS (10s)
+  neutrality-c: PASS (10s)
+  neutrality-jvm: PASS (97s)
+  matched-go: PASS (10s)
+  mismatched-go: REJECT-AS-EXPECTED (9s)
+  fallback-go: REJECT-AS-EXPECTED (10s)

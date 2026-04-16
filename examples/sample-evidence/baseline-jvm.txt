@@ -1,0 +1,40 @@
+Cell: baseline-jvm
+Timestamp: 2026-04-16T02:13:14Z
+Client variant: stock-jvm
+Host variant: stock-jvm
+Expected outcome: PASS
+
+--- Client stdout ---
+[main] INFO org.openziti.impl.ZitiImpl - ZitiSDK version 0.33.0 @c8a5268()
+[DefaultDispatcher-worker-3] WARN ziti-conn[/1] - failed to connect: org.openziti.ZitiException: ServiceNotAvailable
+[DefaultDispatcher-worker-3] WARN ziti-conn[/1] - failed to send StateClosed message: ServiceNotAvailable
+NEGOTIATED-CIPHER:1
+connection error: org.openziti.ZitiException: ServiceNotAvailable
+[DefaultDispatcher-worker-3] ERROR ziti-conn[/1] -  failed to connect: java.util.concurrent.CancellationException: close
+[DefaultDispatcher-worker-4] WARN Controller - failed to connect to controller https://ziti-controller:1280: Job was cancelled
+
+--- Host stdout ---
+[main] INFO org.openziti.impl.ZitiImpl - ZitiSDK version 0.33.0 @c8a5268()
+[DefaultDispatcher-worker-2] INFO oidc[https://ziti-controller:1280] - body: response_type=code&client_id=openziti&redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Fauth%2Fcallback&scope=openid+offline_access&state=an6aHbccvQb6ShmMiG6DzmyRn4dD45ntwxRj3D7-&code_challenge=oK7a1aMD6qoiaQdBpWWQuXC27msxRN8Wpqgu0oAJo3U&code_challenge_method=S256
+connection error: null
+NEGOTIATED-CIPHER:1
+[DefaultDispatcher-worker-7] ERROR org.openziti.net.ZitiServerSocketChannel - received error. starting rebind
+java.util.concurrent.CancellationException
+	at org.openziti.impl.ChannelImpl.onDisconnect(ChannelImpl.kt:179)
+	at org.openziti.impl.ChannelImpl.access$onDisconnect(ChannelImpl.kt:44)
+	at org.openziti.impl.ChannelImpl$start$1.invokeSuspend(ChannelImpl.kt:156)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:98)
+	at kotlinx.coroutines.internal.LimitedDispatcher$Worker.run(LimitedDispatcher.kt:124)
+	at kotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:89)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:586)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:820)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:717)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:704)
+
+--- Parsed cipher IDs ---
+Client: 1
+Host: 1
+
+--- Verdict ---
+PASS

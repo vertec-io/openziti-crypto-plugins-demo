@@ -1,0 +1,18 @@
+Cell: baseline-go
+Timestamp: 2026-04-16T02:11:27Z
+Client variant: stock-go
+Host variant: stock-go
+Expected outcome: PASS
+
+--- Client stdout ---
+NEGOTIATED-CIPHER:1
+
+--- Host stdout ---
+NEGOTIATED-CIPHER:1
+
+--- Parsed cipher IDs ---
+Client: 1
+Host: 1
+
+--- Verdict ---
+PASS

@@ -1,0 +1,24 @@
+Cell: neutrality-c
+Timestamp: 2026-04-16T02:13:34Z
+Client variant: hook-c
+Host variant: hook-c
+Expected outcome: PASS
+
+--- Client stdout ---
+dial error: connection is closed
+context error: ziti context is disabled
+context error: ziti context is disabled
+NEGOTIATED-CIPHER:1
+
+--- Host stdout ---
+accept error: ziti context is disabled
+context error: ziti context is disabled
+context error: ziti context is disabled
+NEGOTIATED-CIPHER:1
+
+--- Parsed cipher IDs ---
+Client: 1
+Host: 1
+
+--- Verdict ---
+PASS

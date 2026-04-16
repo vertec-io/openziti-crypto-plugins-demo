@@ -1,0 +1,18 @@
+Cell: mismatched-go
+Timestamp: 2026-04-16T02:15:30Z
+Client variant: hook-go
+Host variant: hookoff-go
+Expected outcome: REJECT
+
+--- Client stdout ---
+dial error: unable to dial service 'cipher-interop-svc' (dial failed: exceeded maximum [2] retries creating circuit [c/5gPmfS7reiXL7auO6iShzL] (error creating route for [s/5gPmfS7reiXL7auO6iShzL] on [r/NzdfywzRx] (error creating route for [c/5gPmfS7reiXL7auO6iShzL]: failed to establish connection with terminator address 5oKSYIvfObVafOIIlQCTA5. error: (failed to establish crypto session (cipher negotiation failed: secretstream: no mutually supported cipher (peerPrefs=[2]))))))
+
+--- Host stdout ---
+
+
+--- Parsed cipher IDs ---
+Client: NONE
+Host: NONE
+
+--- Verdict ---
+REJECT-AS-EXPECTED

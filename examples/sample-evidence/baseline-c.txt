@@ -1,0 +1,25 @@
+Cell: baseline-c
+Timestamp: 2026-04-16T02:11:37Z
+Client variant: stock-c
+Host variant: stock-c
+Expected outcome: PASS
+
+--- Client stdout ---
+NEGOTIATED-CIPHER:1
+dial error: ziti context is disabled
+context error: ziti controller is not available
+context error: ziti context is disabled
+context error: ziti context is disabled
+
+--- Host stdout ---
+accept error: ziti context is disabled
+context error: ziti context is disabled
+context error: ziti context is disabled
+NEGOTIATED-CIPHER:1
+
+--- Parsed cipher IDs ---
+Client: 1
+Host: 1
+
+--- Verdict ---
+PASS

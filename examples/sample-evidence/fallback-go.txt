@@ -1,0 +1,18 @@
+Cell: fallback-go
+Timestamp: 2026-04-16T02:15:40Z
+Client variant: hook-go
+Host variant: stock-go
+Expected outcome: REJECT
+
+--- Client stdout ---
+read error: failed to init decryptor: secretstream: header does not match any supported cipher
+
+--- Host stdout ---
+read error: failed to receive crypto header bytes: read[12]
+
+--- Parsed cipher IDs ---
+Client: NONE
+Host: NONE
+
+--- Verdict ---
+REJECT-AS-EXPECTED

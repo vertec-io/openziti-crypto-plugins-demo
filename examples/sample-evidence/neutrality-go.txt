@@ -1,0 +1,18 @@
+Cell: neutrality-go
+Timestamp: 2026-04-16T02:13:24Z
+Client variant: hookoff-go
+Host variant: hookoff-go
+Expected outcome: PASS
+
+--- Client stdout ---
+NEGOTIATED-CIPHER:1
+
+--- Host stdout ---
+NEGOTIATED-CIPHER:1
+
+--- Parsed cipher IDs ---
+Client: 1
+Host: 1
+
+--- Verdict ---
+PASS
