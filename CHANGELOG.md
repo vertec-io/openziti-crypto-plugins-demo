@@ -1,5 +1,8 @@
 ## Unreleased
 
+- JVM SDK sample JARs: stock + hook-enabled client/host with `--print-cipher` trace
+  (stock: org.openziti:ziti:0.33.0; hook: vertec-io/ziti-sdk-jvm at 67e9185,
+  branch feature/crypto-extensibility, JDK-default JCE providers only)
 - C SDK sample binaries: stock + hook-enabled client/host with `--print-cipher` trace
   (stock: openziti/ziti-sdk-c 1.14.3; hook: vertec-io/ziti-sdk-c at 53f2c67,
   branch feature/crypto-extensibility, `-DZITI_CRYPTO_BACKEND=openssl`)

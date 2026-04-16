@@ -3,6 +3,7 @@
 x-ziti-sha: &ziti-sha "d9a20d9dad8c58f098f989eb1668ed657c0500c5"
 x-sdk-golang-sha: &sdk-golang-sha "6c0300dc1b3b739088f13d71a841ad6914af817b"
 x-ziti-sdk-c-sha: &ziti-sdk-c-sha "53f2c67763797d53466ab5f786660fa26fce4939"
+x-ziti-sdk-jvm-sha: &ziti-sdk-jvm-sha "67e91851c81ba6b82db1d768bf6673e187cc036a"
 
 services:
   init-pki:
@@ -101,6 +102,18 @@ services:
         ZITI_SDK_C_SHA: *ziti-sdk-c-sha
     image: openziti-c-sdk-samples:local
     container_name: c-sdk-build
+    entrypoint: ["echo", "build-only"]
+    profiles:
+      - build-only
+
+  jvm-sdk:
+    build:
+      context: ./sample/jvm
+      dockerfile: Dockerfile
+      args:
+        ZITI_SDK_JVM_SHA: *ziti-sdk-jvm-sha
+    image: openziti-jvm-sdk-samples:local
+    container_name: jvm-sdk-build
     entrypoint: ["echo", "build-only"]
     profiles:
       - build-only
