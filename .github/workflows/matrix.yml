@@ -1,0 +1,154 @@
+name: Cipher Interop Matrix
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  checks: write
+
+jobs:
+  matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
+        with:
+          driver-opts: network=host
+
+      - name: Extract pinned SHAs from docker-compose.yml
+        id: shas
+        run: |
+          extract() { grep "x-${1}:" docker-compose.yml | grep -oP '"[a-f0-9]{40}"' | tr -d '"'; }
+          echo "ziti=$(extract ziti-sha)" >> "$GITHUB_OUTPUT"
+          echo "sdk_golang=$(extract sdk-golang-sha)" >> "$GITHUB_OUTPUT"
+          echo "ziti_sdk_c=$(extract ziti-sdk-c-sha)" >> "$GITHUB_OUTPUT"
+          echo "ziti_sdk_jvm=$(extract ziti-sdk-jvm-sha)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Go modules
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: /tmp/go-mod-cache
+          key: go-mod-${{ hashFiles('sample/go/Dockerfile') }}
+          restore-keys: go-mod-
+
+      - name: Cache Gradle
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: /tmp/gradle-cache
+          key: gradle-${{ hashFiles('sample/jvm/Dockerfile') }}
+          restore-keys: gradle-
+
+      - name: Build ziti-controller image
+        uses: docker/build-push-action@14487ce63c7a62a4a324b0bfb37086795e31c6c1 # v6.16.0
+        with:
+          context: ./docker/ziti
+          file: ./docker/ziti/Dockerfile
+          target: ziti-controller
+          build-args: ZITI_SHA=${{ steps.shas.outputs.ziti }}
+          tags: openziti-controller-from-harness:local
+          load: true
+          cache-from: type=gha,scope=ziti-controller
+          cache-to: type=gha,scope=ziti-controller,mode=max
+
+      - name: Build ziti-router image
+        uses: docker/build-push-action@14487ce63c7a62a4a324b0bfb37086795e31c6c1 # v6.16.0
+        with:
+          context: ./docker/ziti
+          file: ./docker/ziti/Dockerfile
+          target: ziti-router
+          build-args: ZITI_SHA=${{ steps.shas.outputs.ziti }}
+          tags: openziti-router-from-harness:local
+          load: true
+          cache-from: type=gha,scope=ziti-router
+          cache-to: type=gha,scope=ziti-router,mode=max
+
+      - name: Build Go SDK samples image
+        uses: docker/build-push-action@14487ce63c7a62a4a324b0bfb37086795e31c6c1 # v6.16.0
+        with:
+          context: ./sample/go
+          file: ./sample/go/Dockerfile
+          build-args: SDK_GOLANG_SHA=${{ steps.shas.outputs.sdk_golang }}
+          build-contexts: plugin=./reference-plugin/go
+          tags: openziti-go-sdk-samples:local
+          load: true
+          cache-from: type=gha,scope=go-sdk
+          cache-to: type=gha,scope=go-sdk,mode=max
+
+      - name: Build C SDK samples image
+        uses: docker/build-push-action@14487ce63c7a62a4a324b0bfb37086795e31c6c1 # v6.16.0
+        with:
+          context: ./sample/c
+          file: ./sample/c/Dockerfile
+          build-args: ZITI_SDK_C_SHA=${{ steps.shas.outputs.ziti_sdk_c }}
+          tags: openziti-c-sdk-samples:local
+          load: true
+          cache-from: type=gha,scope=c-sdk
+          cache-to: type=gha,scope=c-sdk,mode=max
+
+      - name: Build JVM SDK samples image
+        uses: docker/build-push-action@14487ce63c7a62a4a324b0bfb37086795e31c6c1 # v6.16.0
+        with:
+          context: ./sample/jvm
+          file: ./sample/jvm/Dockerfile
+          build-args: ZITI_SDK_JVM_SHA=${{ steps.shas.outputs.ziti_sdk_jvm }}
+          tags: openziti-jvm-sdk-samples:local
+          load: true
+          cache-from: type=gha,scope=jvm-sdk
+          cache-to: type=gha,scope=jvm-sdk,mode=max
+
+      - name: Start infrastructure
+        id: compose-up
+        run: |
+          docker compose up -d
+          exit_code=$?
+          if [ $exit_code -ne 0 ]; then
+            echo "retry=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "retry=false" >> "$GITHUB_OUTPUT"
+          fi
+        continue-on-error: true
+
+      - name: Retry infrastructure startup (once)
+        if: steps.compose-up.outcome == 'failure'
+        run: |
+          echo "First docker compose up failed, retrying once..."
+          docker compose down -v || true
+          sleep 5
+          docker compose up -d
+
+      - name: Wait for ready
+        run: bash ./scripts/wait-for-ready.sh 180
+
+      - name: Run interop matrix
+        run: bash ./runmatrix.sh --all
+
+      - name: Upload evidence artifacts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: interop-evidence
+          path: evidence/
+
+      - name: Post matrix summary on PR
+        if: github.event_name == 'pull_request' && always()
+        run: |
+          if [ -f evidence/matrix-summary.txt ]; then
+            {
+              echo '### Cipher Interop Matrix Results'
+              echo '```'
+              cat evidence/matrix-summary.txt
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
