@@ -35,6 +35,7 @@ tasks.register<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar>("clie
     from(sourceSets.main.get().output)
     configurations = listOf(project.configurations.runtimeClasspath.get())
     mergeServiceFiles()
+    exclude("META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA")
 }
 
 tasks.register<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar>("hostJar") {
@@ -45,6 +46,7 @@ tasks.register<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar>("host
     from(sourceSets.main.get().output)
     configurations = listOf(project.configurations.runtimeClasspath.get())
     mergeServiceFiles()
+    exclude("META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA")
 }
 
 tasks.named("build") {
