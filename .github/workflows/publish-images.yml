@@ -1,0 +1,246 @@
+name: publish-images
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: publish-images-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-scan-publish:
+    name: build-scan-publish-${{ matrix.image.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: true
+      matrix:
+        image:
+          - name: ziti-controller
+            context: ./docker/ziti
+            dockerfile: ./docker/ziti/Dockerfile
+            target: ziti-controller
+            sha_arg: ZITI_SHA
+            sha_var: ziti
+            build_contexts: ''
+          - name: ziti-router
+            context: ./docker/ziti
+            dockerfile: ./docker/ziti/Dockerfile
+            target: ziti-router
+            sha_arg: ZITI_SHA
+            sha_var: ziti
+            build_contexts: ''
+          - name: sample-go
+            context: ./sample/go
+            dockerfile: ./sample/go/Dockerfile
+            target: ''
+            sha_arg: SDK_GOLANG_SHA
+            sha_var: sdk_golang
+            build_contexts: 'plugin=./reference-plugin/go'
+          - name: sample-c
+            context: ./sample/c
+            dockerfile: ./sample/c/Dockerfile
+            target: ''
+            sha_arg: ZITI_SDK_C_SHA
+            sha_var: ziti_sdk_c
+            build_contexts: ''
+          - name: sample-jvm
+            context: ./sample/jvm
+            dockerfile: ./sample/jvm/Dockerfile
+            target: ''
+            sha_arg: ZITI_SDK_JVM_SHA
+            sha_var: ziti_sdk_jvm
+            build_contexts: ''
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Compute short SHA
+        id: sha
+        run: echo "short=${GITHUB_SHA:0:12}" >> "$GITHUB_OUTPUT"
+
+      - name: Verify Dockerfile patterns (.git strip + multi-stage COPY)
+        run: |
+          file="${{ matrix.image.dockerfile }}"
+          if ! grep -E 'rm -rf [^[:space:]]*\.git( |$)' "$file" >/dev/null; then
+            echo "ERROR: $file missing .git strip pattern (rm -rf [path/].git)"
+            exit 1
+          fi
+          if ! grep -E 'COPY --from=' "$file" >/dev/null; then
+            echo "ERROR: $file missing COPY --from= multi-stage pattern"
+            exit 1
+          fi
+          echo "OK: $file matches expected patterns"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
+
+      - name: Login to GHCR
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract pinned SHAs from docker-compose.yml
+        id: shas
+        run: |
+          extract() { grep "x-${1}:" docker-compose.yml | grep -oP '"[a-f0-9]{40}"' | tr -d '"'; }
+          echo "ziti=$(extract ziti-sha)" >> "$GITHUB_OUTPUT"
+          echo "sdk_golang=$(extract sdk-golang-sha)" >> "$GITHUB_OUTPUT"
+          echo "ziti_sdk_c=$(extract ziti-sdk-c-sha)" >> "$GITHUB_OUTPUT"
+          echo "ziti_sdk_jvm=$(extract ziti-sdk-jvm-sha)" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve build-arg SHA for this image
+        id: argsha
+        run: |
+          case "${{ matrix.image.sha_var }}" in
+            ziti)         v="${{ steps.shas.outputs.ziti }}" ;;
+            sdk_golang)   v="${{ steps.shas.outputs.sdk_golang }}" ;;
+            ziti_sdk_c)   v="${{ steps.shas.outputs.ziti_sdk_c }}" ;;
+            ziti_sdk_jvm) v="${{ steps.shas.outputs.ziti_sdk_jvm }}" ;;
+            *) echo "ERROR: unknown sha_var ${{ matrix.image.sha_var }}"; exit 1 ;;
+          esac
+          if [ -z "$v" ]; then
+            echo "ERROR: empty SHA for ${{ matrix.image.sha_var }}"
+            exit 1
+          fi
+          echo "value=$v" >> "$GITHUB_OUTPUT"
+
+      - name: Build (scan-only, load locally)
+        uses: docker/build-push-action@14487ce63c7a62a4a324b0bfb37086795e31c6c1 # v6.16.0
+        with:
+          context: ${{ matrix.image.context }}
+          file: ${{ matrix.image.dockerfile }}
+          target: ${{ matrix.image.target }}
+          build-args: |
+            ${{ matrix.image.sha_arg }}=${{ steps.argsha.outputs.value }}
+          build-contexts: ${{ matrix.image.build_contexts }}
+          tags: localscan/${{ matrix.image.name }}:scan
+          load: true
+          push: false
+          cache-from: type=gha,scope=publish-${{ matrix.image.name }}
+          cache-to: type=gha,scope=publish-${{ matrix.image.name }},mode=max
+
+      - name: Structural check 1 - no .git/ entries in any layer
+        run: |
+          if docker save localscan/${{ matrix.image.name }}:scan | tar -tf - 2>/dev/null | grep -E '(^|/)\.git/' >/dev/null; then
+            echo "ERROR: .git/ directory found in image layers"
+            docker save localscan/${{ matrix.image.name }}:scan | tar -tf - 2>/dev/null | grep -E '(^|/)\.git/' | head -20
+            exit 1
+          fi
+          echo "OK: no .git/ entries"
+
+      - name: Structural check 2 - no .git/HEAD specifically
+        run: |
+          if docker save localscan/${{ matrix.image.name }}:scan | tar -tf - 2>/dev/null | grep -F '.git/HEAD' >/dev/null; then
+            echo "ERROR: .git/HEAD found in image layers"
+            exit 1
+          fi
+          echo "OK: no .git/HEAD"
+
+      - name: Structural artifact - image history (for maintainer post-publish scan)
+        run: |
+          docker image history --no-trunc localscan/${{ matrix.image.name }}:scan \
+            > structural-history-${{ matrix.image.name }}-${{ steps.sha.outputs.short }}.txt
+          echo "history bytes: $(wc -c < structural-history-${{ matrix.image.name }}-${{ steps.sha.outputs.short }}.txt)"
+
+      - name: Structural artifact - image inspect labels+env
+        run: |
+          docker inspect --format '{{json .Config.Labels}} {{json .Config.Env}}' localscan/${{ matrix.image.name }}:scan \
+            > structural-inspect-${{ matrix.image.name }}-${{ steps.sha.outputs.short }}.txt
+
+      - name: Upload structural artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: structural-${{ matrix.image.name }}-${{ steps.sha.outputs.short }}
+          path: |
+            structural-history-${{ matrix.image.name }}-${{ steps.sha.outputs.short }}.txt
+            structural-inspect-${{ matrix.image.name }}-${{ steps.sha.outputs.short }}.txt
+          retention-days: 30
+
+      - name: Push to GHCR (latest + sha tags)
+        id: push
+        uses: docker/build-push-action@14487ce63c7a62a4a324b0bfb37086795e31c6c1 # v6.16.0
+        with:
+          context: ${{ matrix.image.context }}
+          file: ${{ matrix.image.dockerfile }}
+          target: ${{ matrix.image.target }}
+          build-args: |
+            ${{ matrix.image.sha_arg }}=${{ steps.argsha.outputs.value }}
+          build-contexts: ${{ matrix.image.build_contexts }}
+          tags: |
+            ghcr.io/vertec-io/openziti-crypto-plugins-demo/${{ matrix.image.name }}:latest
+            ghcr.io/vertec-io/openziti-crypto-plugins-demo/${{ matrix.image.name }}:sha-${{ steps.sha.outputs.short }}
+          load: false
+          push: true
+          cache-from: type=gha,scope=publish-${{ matrix.image.name }}
+
+      - name: Validate digest captured
+        run: |
+          if [ -z "${{ steps.push.outputs.digest }}" ]; then
+            echo "ERROR: push step produced empty digest output"
+            exit 1
+          fi
+          echo "Pushed digest: ${{ steps.push.outputs.digest }}"
+
+      - name: Write manifest fragment
+        run: |
+          mkdir -p manifest-out
+          echo "${{ matrix.image.name }}=sha-${{ steps.sha.outputs.short }}=${{ steps.push.outputs.digest }}" \
+            > manifest-out/manifest-fragment-${{ matrix.image.name }}.txt
+          echo "fragment contents:"
+          cat manifest-out/manifest-fragment-${{ matrix.image.name }}.txt
+
+      - name: Upload manifest fragment
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: manifest-fragment-${{ matrix.image.name }}
+          path: manifest-out/manifest-fragment-${{ matrix.image.name }}.txt
+          retention-days: 30
+
+  assemble-manifest:
+    name: assemble-image-manifest
+    needs: build-scan-publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Compute short SHA
+        id: sha
+        run: echo "short=${GITHUB_SHA:0:12}" >> "$GITHUB_OUTPUT"
+
+      - name: Download manifest fragments
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        with:
+          pattern: manifest-fragment-*
+          path: fragments
+          merge-multiple: true
+
+      - name: Assemble image-manifest
+        run: |
+          out="image-manifest-${{ steps.sha.outputs.short }}.txt"
+          : > "$out"
+          for f in $(ls fragments/manifest-fragment-*.txt | sort); do
+            cat "$f" >> "$out"
+          done
+          echo "Assembled manifest contents:"
+          cat "$out"
+          lines=$(grep -c . "$out")
+          if [ "$lines" -ne 5 ]; then
+            echo "ERROR: expected 5 manifest lines, got $lines"
+            exit 1
+          fi
+          echo "OK: 5 lines verified"
+
+      - name: Upload assembled manifest
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: image-manifest-${{ steps.sha.outputs.short }}.txt
+          path: image-manifest-${{ steps.sha.outputs.short }}.txt
+          retention-days: 90
