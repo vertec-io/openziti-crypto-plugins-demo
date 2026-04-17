@@ -40,9 +40,18 @@ while [ "$ELAPSED" -lt "$TIMEOUT" ]; do
         ziti edge list identities 'name contains "test-"' --output-json 2>/dev/null || echo "{}")
       if echo "$IDENTS" | grep -q '"name"[[:space:]]*:[[:space:]]*"test-client"' && \
          echo "$IDENTS" | grep -q '"name"[[:space:]]*:[[:space:]]*"test-host"'; then
-        echo ""
-        echo "Ready: controller login OK, router online, test-client + test-host identities enrolled."
-        exit 0
+
+        # Gate 4: the cipher-interop-dial service-policy exists (this is the
+        # LAST object init-config.sh creates before its router policy, so
+        # its presence means identities + service + bind/dial policies are
+        # all in place — the matrix can run safely).
+        POLICIES=$(docker exec "$CTRL_CONTAINER" \
+          ziti edge list service-policies 'name="cipher-interop-dial"' --output-json 2>/dev/null || echo "{}")
+        if echo "$POLICIES" | grep -q '"name"[[:space:]]*:[[:space:]]*"cipher-interop-dial"'; then
+          echo ""
+          echo "Ready: controller login OK, router online, test identities enrolled, cipher-interop service + policies configured."
+          exit 0
+        fi
       fi
     fi
   fi
