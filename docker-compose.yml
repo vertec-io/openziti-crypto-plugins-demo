@@ -6,13 +6,12 @@ x-ziti-sdk-c-sha: &ziti-sdk-c-sha "53f2c67763797d53466ab5f786660fa26fce4939"
 x-ziti-sdk-jvm-sha: &ziti-sdk-jvm-sha "67e91851c81ba6b82db1d768bf6673e187cc036a"
 
 services:
+  # init-pki uses the same image as ziti-controller (ziti CLI), just with a
+  # different entrypoint. It does NOT define its own build block — that was
+  # a Docker Buildx Bake race bug: two services declaring identical build
+  # contexts for the same image tag raced on the tag write. ziti-controller
+  # owns the build; init-pki picks up the already-built image at `up` time.
   init-pki:
-    build:
-      context: ./docker/ziti
-      dockerfile: Dockerfile
-      target: ziti-controller
-      args:
-        ZITI_SHA: *ziti-sha
     image: openziti-controller-from-harness:local
     container_name: init-pki
     extra_hosts:

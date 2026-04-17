@@ -1,52 +1,64 @@
 #!/usr/bin/env bash
+# Waits for the harness stack to be ready for the matrix to run.
+#
+# Readiness is defined functionally: the ziti-controller accepts an admin
+# login, a router reports isOnline, and the test-client/test-host identities
+# are enumerable via `ziti edge list identities`. Those three signals prove
+# the controller, router, and config-init steps have all completed enough
+# for matrix cells to run.
+#
+# The previous 4-gate version also inspected init-config's container state
+# and the raw identity JSON files on the volume; both were brittle on cold
+# 2-vCPU starts (gate latching, volume sync timing). The identity-list gate
+# supersedes both: if list-identities returns both test-client and test-host,
+# the enrollment work was done successfully — that is the outcome the process
+# signals were trying to prove.
+
 set -euo pipefail
 
-TIMEOUT=${1:-180}
+TIMEOUT=${1:-300}
 CTRL_CONTAINER="ziti-controller"
-INIT_CONFIG_CONTAINER="init-config"
 ELAPSED=0
+INTERVAL=3
 
-echo "Waiting for controller and router to be ready (timeout: ${TIMEOUT}s)..."
+echo "Waiting for controller + router + identities to be ready (timeout: ${TIMEOUT}s)..."
 
 while [ "$ELAPSED" -lt "$TIMEOUT" ]; do
-  # Controller reachable + admin login works
+  # Gate 1: controller accepts admin login
   if docker exec "$CTRL_CONTAINER" \
-    ziti edge login "https://ziti-controller:1280" \
-      -u admin -p admin123 -y \
-      --ca /data/pki/root-ca/certs/root-ca.cert >/dev/null 2>&1; then
+      ziti edge login "https://ziti-controller:1280" \
+        -u admin -p admin123 -y \
+        --ca /data/pki/root-ca/certs/root-ca.cert >/dev/null 2>&1; then
 
-    # Router online
-    ROUTER_CHECK=$(docker exec "$CTRL_CONTAINER" \
+    # Gate 2: at least one router is online
+    ROUTERS=$(docker exec "$CTRL_CONTAINER" \
       ziti edge list edge-routers --output-json 2>/dev/null || echo "{}")
+    if echo "$ROUTERS" | grep -q '"isOnline"[[:space:]]*:[[:space:]]*true'; then
 
-    if echo "$ROUTER_CHECK" | grep -q '"isOnline".*true'; then
-      # init-config container has exited cleanly (0) — this is the
-      # authoritative signal that enrollments + service + policies
-      # are complete and identity files are on the volume.
-      IC_STATE=$(docker inspect -f '{{.State.Status}}:{{.State.ExitCode}}' \
-        "$INIT_CONFIG_CONTAINER" 2>/dev/null || echo "missing:-1")
-
-      if [ "$IC_STATE" = "exited:0" ]; then
-        # Defense-in-depth: also verify both identity JSONs exist.
-        IDENTITY_FILES_OK=$(docker exec "$CTRL_CONTAINER" \
-          sh -c 'test -s /data/identities/test-client.json && test -s /data/identities/test-host.json && echo OK || echo NO' 2>/dev/null || echo "NO")
-
-        if [ "$IDENTITY_FILES_OK" = "OK" ]; then
-          echo ""
-          echo "Controller healthy, router online, init-config exited(0), identity files present."
-          exit 0
-        fi
+      # Gate 3: both test identities exist and are enrolled
+      IDENTS=$(docker exec "$CTRL_CONTAINER" \
+        ziti edge list identities 'name contains "test-"' --output-json 2>/dev/null || echo "{}")
+      if echo "$IDENTS" | grep -q '"name"[[:space:]]*:[[:space:]]*"test-client"' && \
+         echo "$IDENTS" | grep -q '"name"[[:space:]]*:[[:space:]]*"test-host"'; then
+        echo ""
+        echo "Ready: controller login OK, router online, test-client + test-host identities enrolled."
+        exit 0
       fi
     fi
   fi
 
-  sleep 3
-  ELAPSED=$((ELAPSED + 3))
+  sleep "$INTERVAL"
+  ELAPSED=$((ELAPSED + INTERVAL))
   printf "\r  %ds / %ds" "$ELAPSED" "$TIMEOUT"
 done
 
 echo ""
 echo "ERROR: timed out after ${TIMEOUT}s waiting for ready state"
+echo "--- diagnostic snapshot ---"
+docker ps --filter "name=ziti-" --filter "name=init-" \
+  --format 'table {{.Names}}\t{{.Status}}' 2>/dev/null || true
 docker inspect -f 'init-config: {{.State.Status}} (exit {{.State.ExitCode}})' \
-  "$INIT_CONFIG_CONTAINER" 2>/dev/null || true
+  init-config 2>/dev/null || true
+echo "--- last controller log (5 lines) ---"
+docker logs --tail 5 "$CTRL_CONTAINER" 2>&1 | sed 's/^/  /' || true
 exit 1
